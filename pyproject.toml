@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "auth0-python-fastapi-sample"
+version = "0.1.0"
+description = "Auth0 Python FastAPI Sample"
+authors = ["fitzypop <32967490+fitzypop@users.noreply.github.com>"]
+license = "Unlicense"
+readme = "README.md"
+packages = [{ include = "application" }]
+repository = "https://github.com/fitzypop/auth0-python-fastapi-sample"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+# auth0-python = "^4.3.0"
+fastapi = { extras = ["all"], version = "^0.110.2" }
+pydantic = "^2.7.1"
+pydantic-settings = "^2.2.1"
+pyjwt = "^2.8.0"
+python-dotenv = "^1.0.1"
+uvicorn = { extras = ["standard"], version = "^0.29.0" }
+
+
+[tool.poetry.group.dev.dependencies]
+# httpx = "^0.24.1"
+black = "^24.4.1"
+ruff = "^0.4.1"
+pytest = "^8.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

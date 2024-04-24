@@ -28,13 +28,14 @@ class VerifyToken:
 
         # This gets the JWKS from a given URL and does processing so you can
         # use any of the keys available
-        jwks_url = f'https://{self.config.auth0_domain}/.well-known/jwks.json'
+        jwks_url = f"https://{self.config.auth0_domain}/.well-known/jwks.json"
         self.jwks_client = jwt.PyJWKClient(jwks_url)
 
-    async def verify(self,
-                     security_scopes: SecurityScopes,
-                     token: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer())
-                     ):
+    async def verify(
+        self,
+        security_scopes: SecurityScopes,
+        token: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer()),
+    ):
         if token is None:
             raise UnauthenticatedException
 
@@ -52,7 +53,7 @@ class VerifyToken:
             payload = jwt.decode(
                 token.credentials,
                 signing_key,
-                algorithms=self.config.auth0_algorithms,
+                algorithms=[self.config.auth0_algorithms],
                 audience=self.config.auth0_api_audience,
                 issuer=self.config.auth0_issuer,
             )
@@ -60,18 +61,20 @@ class VerifyToken:
             raise UnauthorizedException(str(error))
 
         if len(security_scopes.scopes) > 0:
-            self._check_claims(payload, 'scope', security_scopes.scopes)
+            self._check_claims(payload, "scope", security_scopes.scopes)
 
         return payload
 
     def _check_claims(self, payload, claim_name, expected_value):
         if claim_name not in payload:
-            raise UnauthorizedException(detail=f'No claim "{claim_name}" found in token')
+            raise UnauthorizedException(
+                detail=f'No claim "{claim_name}" found in token'
+            )
 
         payload_claim = payload[claim_name]
 
-        if claim_name == 'scope':
-            payload_claim = payload[claim_name].split(' ')
+        if claim_name == "scope":
+            payload_claim = payload[claim_name].split(" ")
 
         for value in expected_value:
             if value not in payload_claim:
