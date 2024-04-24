@@ -1,14 +1,20 @@
 """Python FastAPI Auth0 integration example"""
 
 from typing import Annotated, Any
-from fastapi import FastAPI, Security
+from fastapi import Depends, FastAPI, Security
 from application.auth import Auth0Token
+from application.config import get_settings
 
-# Creates app instance
+
+settings = get_settings()
+auth = Auth0Token(
+    settings.auth0_api_audience,
+    settings.auth0_domain,
+    settings.auth0_issuer,
+    {"read:message": "read messages"},
+)
+
 app = FastAPI()
-token = Auth0Token()
-
-Token = Annotated[Any, Security(token.verify)]
 
 
 @app.get("/api/public")
@@ -25,14 +31,16 @@ async def public():
     return result
 
 
-@app.get("/api/private")
-async def private(auth_result: Token):
+@app.get("/api/private", dependencies=[Depends(auth.implicit_scheme)])
+async def private(auth_result: Annotated[Any, Security(auth.verify)]):
     """A valid access token is required to access this route"""
     return auth_result
 
 
-@app.get("/api/private-scoped")
-async def private_scoped(auth_result=Security(token.verify, scopes=["read:message"])):
+@app.get("/api/private-scoped", dependencies=[Depends(auth.implicit_scheme)])
+async def private_scoped(
+    auth_result: Annotated[Any, Security(auth.verify, scopes=["read:message"])],
+):
     """A valid access token and an appropriate scope are required to access
     this route
     """
