@@ -2,4 +2,7 @@ install:
     poetry install
 
 run:
-    uvicorn application.main:app --reload
+    poetry run uvicorn application.main:app --reload
+
+test:
+    poetry run pytest -rx -vv
