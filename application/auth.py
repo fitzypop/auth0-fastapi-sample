@@ -1,6 +1,6 @@
 import urllib.parse
 from enum import StrEnum, auto
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Sequence
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
@@ -33,8 +33,8 @@ class OAuth2ImplicitBearer(OAuth2):
     def __init__(
         self,
         authorizationUrl: str,  # noqa: N803
-        scopes: Dict[str, str] | None = None,
-        scheme_name: Optional[str] = None,
+        scopes: dict[str, str] | None = None,
+        scheme_name: str | None = None,
         auto_error: bool = True,
     ):
         flows = OAuthFlows(
@@ -45,20 +45,17 @@ class OAuth2ImplicitBearer(OAuth2):
         )
         super().__init__(flows=flows, scheme_name=scheme_name, auto_error=auto_error)
 
-    async def __call__(self, request: Request) -> Optional[str]:
+    async def __call__(self, request: Request) -> str | None:
         # Overwrite parent call to prevent useless overhead.
-        # The actual auth is done in Auth0.get_user
+        # The actual auth is done in `Authenticator.verify`.
         # This scheme is just for Swagger UI
         return None
 
 
-auth0_rule_namespace = "something"
-
-
 class Auth0User(BaseModel):
     id: str = Field(..., alias="sub")
-    permission: Optional[list[str]] = None
-    email: Optional[EmailStr] = Field(None, alias=f"{auth0_rule_namespace}/email")
+    permission: list[str] | None = None
+    email: EmailStr | None = None
 
 
 class Auth0HTTPBearer(HTTPBearer):
@@ -126,7 +123,7 @@ class Authenticator:
     async def verify(
         self,
         security_scopes: SecurityScopes,
-        token: Optional[HTTPAuthorizationCredentials] = Depends(Auth0HTTPBearer()),  # noqa: B008
+        token: HTTPAuthorizationCredentials | None = Depends(Auth0HTTPBearer()),  # noqa: B008
     ) -> Auth0User:
         if token is None:
             raise UnauthorizedException
@@ -163,7 +160,7 @@ class Authenticator:
         self,
         payload,
         claim_name: ClaimNames,
-        expected_value: Optional[Sequence[Any]] = None,
+        expected_value: Sequence[Any] | None = None,
     ) -> None:
         _claim_name = str(claim_name)
 
