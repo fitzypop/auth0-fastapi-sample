@@ -70,38 +70,6 @@ class OAuth2ImplicitBearer(OAuth2):
         return None
 
 
-class AuthHTTPBearer(HTTPBearer):
-    """Override HTTPBearer token handler.
-
-    Some of the default errors don't make sense to me. This
-    class attempts to recify my problems with the default.
-    """
-
-    def __init__(
-        self,
-        *,
-        bearerFormat: str | None = None,  # noqa: N803
-        scheme_name: str | None = "HTTPBearer",
-        description: str | None = None,
-        auto_error: bool = True,
-    ) -> None:
-        super().__init__(
-            bearerFormat=bearerFormat,
-            scheme_name=scheme_name,
-            description=description,
-            auto_error=auto_error,
-        )
-
-    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
-        authorization = request.headers.get("Authorization")
-        if not authorization:
-            if self.auto_error:
-                raise UnauthorizedException
-            else:
-                return None
-        return await super().__call__(request)
-
-
 class Algorithms(StrEnum):
     """Colletion of Key Signing Algorithms."""
 
@@ -113,7 +81,7 @@ class _Claims(StrEnum):
     """Collection of important claims."""
 
     EMAIL = "email"
-    PERMISSION = "permission"
+    PERMISSIONS = "permissions"
     SCOPE = "scope"
     SUBJECT = "sub"
 
@@ -125,17 +93,16 @@ class Token:
         self,
         *,
         email: str | None = None,
-        permission: list[str] | None = None,
+        permissions: list[str] | None = None,
         sub: str,
         **kwargs,
     ) -> None:
         self.id = self.sub = sub
-        self.permission = permission
+        self.permissions = permissions
         self.email = email
         self.claims = {
             "email": "email",
-            "id": sub,
-            "permission": permission,
+            "permissions": permissions,
             "sub": sub,
             **kwargs,
         }
@@ -182,7 +149,7 @@ class Auth0TokenVerifier:
         self._domain = domain
         self._issuer = f"https://{domain}/"
 
-        # ! gets JWKS (Json Web Key Set), will use in `verify` function !
+        # ! setup JWKS client (Json Web Key Set), will use in `verify` function !
         # ! using PyJWT means no requests in `__init__()` ! YAAAYYY NO MORE MOCKING 🎉
         jwks_url = f"https://{self._domain}/.well-known/jwks.json"
         self._jwks_client = jwt.PyJWKClient(jwks_url)
@@ -212,13 +179,16 @@ class Auth0TokenVerifier:
     async def verify(
         self,
         security_scopes: SecurityScopes,
-        token: HTTPAuthorizationCredentials | None = Depends(AuthHTTPBearer()),  # noqa: B008
+        token: HTTPAuthorizationCredentials | None = Depends(  # noqa: B008
+            HTTPBearer(auto_error=False)  # noqa: B008
+        ),
     ) -> Token:
         if token is None:
             raise UnauthorizedException
 
         try:
-            # This gets the 'kid' from the passed token
+            # This gets the 'kid' from the passed token.
+            # Netowrk request happens here.
             signing = self._jwks_client.get_signing_key_from_jwt(token.credentials)
         except (jwt.exceptions.PyJWKClientError, jwt.exceptions.DecodeError) as e:
             raise ForbiddenException(str(e)) from e
@@ -236,7 +206,7 @@ class Auth0TokenVerifier:
 
         # ? not sure if this is needed? or might be occastional needed ?
         # self._check_claims(payload, ClaimNames.EMAIL)
-        # self._check_claims(payload, _Claims.PERMISSION)
+        # self._check_claims(payload, _Claims.PERMISSIONS)
         self._check_claims(payload, _Claims.SUBJECT)
 
         if len(security_scopes.scopes) > 0:
