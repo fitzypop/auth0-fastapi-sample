@@ -1,19 +1,19 @@
+import urllib.parse
 from enum import StrEnum, auto
 from typing import Any, Dict, Optional, Sequence
-import urllib.parse
+
 import jwt
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.openapi.models import OAuthFlowImplicit, OAuthFlows
 from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
     OAuth2,
     OAuth2AuthorizationCodeBearer,
     OAuth2PasswordBearer,
     OpenIdConnect,
     SecurityScopes,
-    HTTPAuthorizationCredentials,
-    HTTPBearer,
 )
-from fastapi.openapi.models import OAuthFlows, OAuthFlowImplicit
-
 from pydantic import BaseModel, EmailStr, Field, ValidationError
 
 
@@ -32,21 +32,22 @@ class UnauthorizedException(HTTPException):
 class OAuth2ImplicitBearer(OAuth2):
     def __init__(
         self,
-        authorizationUrl: str,
-        scopes: Dict[str, str] = {},
+        authorizationUrl: str,  # noqa: N803
+        scopes: Dict[str, str] | None = None,
         scheme_name: Optional[str] = None,
         auto_error: bool = True,
     ):
         flows = OAuthFlows(
             implicit=OAuthFlowImplicit(
                 authorizationUrl=authorizationUrl,
-                scopes=scopes,
+                scopes=scopes or {},
             )
         )
         super().__init__(flows=flows, scheme_name=scheme_name, auto_error=auto_error)
 
     async def __call__(self, request: Request) -> Optional[str]:
-        # Overwrite parent call to prevent useless overhead, the actual auth is done in Auth0.get_user
+        # Overwrite parent call to prevent useless overhead.
+        # The actual auth is done in Auth0.get_user
         # This scheme is just for Swagger UI
         return None
 
@@ -125,7 +126,7 @@ class Authenticator:
     async def verify(
         self,
         security_scopes: SecurityScopes,
-        token: Optional[HTTPAuthorizationCredentials] = Depends(Auth0HTTPBearer()),
+        token: Optional[HTTPAuthorizationCredentials] = Depends(Auth0HTTPBearer()),  # noqa: B008
     ) -> Auth0User:
         if token is None:
             raise UnauthorizedException
@@ -133,8 +134,8 @@ class Authenticator:
         try:
             # This gets the 'kid' from the passed token
             signing = self._jwks_client.get_signing_key_from_jwt(token.credentials)
-        except (jwt.exceptions.PyJWKClientError, jwt.exceptions.DecodeError) as error:
-            raise ForbiddenException(str(error))
+        except (jwt.exceptions.PyJWKClientError, jwt.exceptions.DecodeError) as e:
+            raise ForbiddenException(str(e)) from e
 
         try:
             payload = jwt.decode(
@@ -144,8 +145,8 @@ class Authenticator:
                 audience=self._api_audience,
                 issuer=self._issuer,
             )
-        except Exception as error:
-            raise ForbiddenException(str(error))
+        except Exception as e:
+            raise ForbiddenException(str(e)) from e
 
         if len(security_scopes.scopes) > 0:
             self._check_claims(payload, ClaimNames.SCOPE, security_scopes.scopes)
