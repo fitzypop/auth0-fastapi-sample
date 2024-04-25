@@ -8,6 +8,6 @@ class Settings(BaseSettings):
     auth0_api_audience: str = ""
 
 
-@lru_cache()
+@lru_cache
 def get_settings():
     return Settings()

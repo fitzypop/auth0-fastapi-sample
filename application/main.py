@@ -1,8 +1,10 @@
 """Python FastAPI Auth0 integration example"""
 
 from typing import Annotated, Any
+
 from fastapi import Depends, FastAPI, Security
-from application.auth import Authenticator
+
+from application.auth import Auth0User, Authenticator
 from application.config import get_settings
 
 settings = get_settings()
@@ -14,7 +16,7 @@ auth = Authenticator(
 Token = Annotated[Any, Security(auth.verify)]
 
 
-def Scopes(*scopes: str):
+def Scopes(*scopes: str) -> Auth0User:  # noqa:N802
     return Security(auth.verify, scopes=scopes)
 
 
@@ -25,18 +27,17 @@ app = FastAPI()
 async def public():
     """No access token required to access this route"""
 
-    result = {
+    return {
         "status": "success",
         "msg": (
             "Hello from a public endpoint! You don't need to be "
             "authenticated to see this."
         ),
     }
-    return result
 
 
-# use `Depends(auth.implicit_scheme)` to tell OpenAPI Docs to use OAuth2 Implicit Flow to get tokens
-# use `Security(auth.verify)` to "lockdown" an endpoint
+# `Depends(auth.implicit_scheme)` for OpenAPI Docs OAuth2 Implicit Flow to get tokens
+# `Security(auth.verify)` to actually "lockdown" an endpoint
 @app.get("/api/private", dependencies=[Depends(auth.implicit_scheme)])
 async def private(auth_result: Token):
     """A valid access token is required to access this route"""
