@@ -9,9 +9,9 @@ from application.config import get_settings
 
 settings = get_settings()
 auth = Authenticator(
-    settings.auth0_domain,
-    settings.auth0_api_audience,
-    {"read:message": "read messages"},
+    domain=settings.auth0_domain,
+    api_audience=settings.auth0_api_audience,
+    scopes={"read:message": "read messages"},
 )
 Token = Annotated[Any, Security(auth.verify)]
 

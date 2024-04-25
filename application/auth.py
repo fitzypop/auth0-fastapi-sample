@@ -36,7 +36,7 @@ class OAuth2ImplicitBearer(OAuth2):
         scopes: dict[str, str] | None = None,
         scheme_name: str | None = None,
         auto_error: bool = True,
-    ):
+    ) -> None:
         flows = OAuthFlows(
             implicit=OAuthFlowImplicit(
                 authorizationUrl=authorizationUrl,
@@ -84,12 +84,15 @@ class Authenticator:
 
     def __init__(
         self,
-        domain: str,
-        api_audience: str,
-        scopes: dict[str, str],
         *,
         algorithm: Algorithms = Algorithms.RS256,
+        api_audience: str,
+        domain: str,
+        scopes: dict[str, str] | None = None,
     ) -> None:
+        if not scopes:
+            scopes = {}
+
         self._algorithms = [str(algorithm)]
         self._api_audience = api_audience
         self._domain = domain
