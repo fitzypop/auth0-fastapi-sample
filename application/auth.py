@@ -18,18 +18,36 @@ from pydantic import ValidationError
 
 
 class ForbiddenException(HTTPException):
+    """Returns HTTP 403"""
+
     def __init__(self, detail: str, **kwargs) -> None:
-        """Returns HTTP 403"""
         super().__init__(status.HTTP_403_FORBIDDEN, detail, **kwargs)
 
 
 class UnauthorizedException(HTTPException):
+    """Returns HTTP 401"""
+
     def __init__(self, detail: str = "Missing bearer token", **kwargs) -> None:
-        """Returns HTTP 401"""
         super().__init__(status.HTTP_401_UNAUTHORIZED, detail, **kwargs)
 
 
 class OAuth2ImplicitBearer(OAuth2):
+    """OAuth2 Implicit Bearer Flow repersentation.
+
+    It's main function is to fetch Tokens from OpenAPI Authorize modal.
+
+    Example usage:
+    ```python
+    auth = Auth0TokenVerifier(domain="", api_audience="", scopes={})
+    app = FastAPI(dependencies=[Depends(auth.implicit_scheme)])
+    ```
+    or
+    ```python
+    @app.get("/", dependencies=[Depends(auth.implicit_scheme)])
+    def func(): ...
+    ```
+    """
+
     def __init__(
         self,
         authorizationUrl: str,  # noqa: N803
@@ -53,6 +71,8 @@ class OAuth2ImplicitBearer(OAuth2):
 
 
 class Token:
+    """Token data returned from verify."""
+
     def __init__(
         self,
         *,
@@ -74,6 +94,12 @@ class Token:
 
 
 class AuthHTTPBearer(HTTPBearer):
+    """Override HTTPBearer token handler.
+
+    Some of the default errors don't make sense to me. This
+    class attempts to recify my problems with the default.
+    """
+
     def __init__(
         self,
         *,
@@ -100,19 +126,48 @@ class AuthHTTPBearer(HTTPBearer):
 
 
 class Algorithms(StrEnum):
+    """Colletion of Key Signing Algorithms."""
+
     RS256 = "RS256"
     HS256 = "HS256"
 
 
 class _Claims(StrEnum):
-    EMAIL = "email"
-    PERMISSION = "permission"
+    """Collection of important claims."""
+
+    # EMAIL = "email"
+    # PERMISSION = "permission"
     SCOPE = "scope"
     SUBJECT = "sub"
 
 
 class Auth0TokenVerifier:
-    """Does all the token verification using PyJWT"""
+    """Does all the token verification using PyJWT.
+
+    Example Usage:
+    ```python
+    auth = Auth0TokenVerifier(...)
+    app = FastAPI()
+
+    @app.get("/")
+    def index(token: Token = Security(auth.verify)):
+        pass
+
+    @app.get("/no_data", dependencies=[Security(auth.verify)])
+    def get_no_token_data():
+        pass
+
+    @app.get("/scoped")
+    def scoped_endpoint(token: Token = Security(auth.verify, scopes=["read:posts"])):
+        pass
+
+    @app.get(
+        "/scoped_no_data",
+        dependencies=[Security(auth.verify, scopes=["read:post"])],
+        )
+    def scoped_no_token_data():
+        pass
+    ```"""
 
     def __init__(
         self,
@@ -179,10 +234,10 @@ class Auth0TokenVerifier:
         except Exception as e:
             raise ForbiddenException(str(e)) from e
 
-        self._check_claims(payload, _Claims.SUBJECT)
         # ? not sure if this is needed? or might be occastional needed ?
         # self._check_claims(payload, ClaimNames.EMAIL)
         # self._check_claims(payload, _Claims.PERMISSION)
+        self._check_claims(payload, _Claims.SUBJECT)
 
         if len(security_scopes.scopes) > 0:
             self._check_claims(payload, _Claims.SCOPE, security_scopes.scopes)
