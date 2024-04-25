@@ -24,7 +24,7 @@ class ForbiddenException(HTTPException):
 
 
 class UnauthorizedException(HTTPException):
-    def __init__(self, detail: str = "Missing bear token", **kwargs) -> None:
+    def __init__(self, detail: str = "Missing bearer token", **kwargs) -> None:
         """Returns HTTP 401"""
         super().__init__(status.HTTP_401_UNAUTHORIZED, detail, **kwargs)
 
@@ -64,7 +64,13 @@ class Token:
         self.id = self.sub = sub
         self.permission = permission
         self.email = email
-        self._other_claims = kwargs
+        self.claims = {
+            "email": "email",
+            "id": sub,
+            "permission": permission,
+            "sub": sub,
+            **kwargs,
+        }
 
 
 class AuthHTTPBearer(HTTPBearer):
@@ -105,7 +111,7 @@ class _Claims(StrEnum):
     SUBJECT = "sub"
 
 
-class Authenticator:
+class Auth0TokenVerifier:
     """Does all the token verification using PyJWT"""
 
     def __init__(

@@ -4,11 +4,11 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Security
 
-from application.auth import Authenticator
+from application.auth import Auth0TokenVerifier
 from application.config import get_settings
 
 settings = get_settings()
-auth = Authenticator(
+auth = Auth0TokenVerifier(
     domain=settings.auth0_domain,
     api_audience=settings.auth0_api_audience,
     scopes={"read:message": "read messages"},
