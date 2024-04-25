@@ -1,5 +1,5 @@
 import urllib.parse
-from enum import StrEnum, auto
+from enum import StrEnum
 from typing import Any, Sequence
 
 import jwt
@@ -85,13 +85,15 @@ class AuthHTTPBearer(HTTPBearer):
 
 
 class Algorithms(StrEnum):
-    RS256 = auto()
-    HS256 = auto()
+    RS256 = "RS256"
+    HS256 = "HS256"
 
 
-class ClaimNames(StrEnum):
-    SCOPE = "scope"
+class _Claims(StrEnum):
     EMAIL = "email"
+    PERMISSION = "permission"
+    SCOPE = "scope"
+    SUBJECT = "sub"
 
 
 class Authenticator:
@@ -101,8 +103,8 @@ class Authenticator:
         self,
         *,
         algorithm: Algorithms = Algorithms.RS256,
-        api_audience: str,
-        domain: str,
+        api_audience: str = "",
+        domain: str = "",
         scopes: dict[str, str] | None = None,
     ) -> None:
         self._algorithms = [str(algorithm)]
@@ -113,7 +115,7 @@ class Authenticator:
         # This gets the JWKS from a given URL and does processing so you can
         # use any of the keys available
         jwks_url = f"https://{self._domain}/.well-known/jwks.json"
-        # None network requests in __init__ !!!
+        # ! None network requests in __init__ ! YAAAYYY 🎉
         self._jwks_client = jwt.PyJWKClient(jwks_url)
 
         if not scopes:
@@ -153,7 +155,7 @@ class Authenticator:
             raise ForbiddenException(str(e)) from e
 
         try:
-            payload = jwt.decode(
+            payload: dict = jwt.decode(
                 token.credentials,
                 signing.key,
                 algorithms=self._algorithms,
@@ -163,21 +165,23 @@ class Authenticator:
         except Exception as e:
             raise ForbiddenException(str(e)) from e
 
-        if len(security_scopes.scopes) > 0:
-            self._check_claims(payload, ClaimNames.SCOPE, security_scopes.scopes)
-
+        self._check_claims(payload, _Claims.SUBJECT)
         # ? not sure if this is needed? or might be occastional needed ?
         # self._check_claims(payload, ClaimNames.EMAIL)
+        # self._check_claims(payload, _Claims.PERMISSION)
+
+        if len(security_scopes.scopes) > 0:
+            self._check_claims(payload, _Claims.SCOPE, security_scopes.scopes)
 
         try:
             return Token(**payload)
-        except ValidationError as e:
+        except (ValidationError, ValueError) as e:
             raise UnauthorizedException(detail="Error parsing Auth0User") from e
 
     def _check_claims(
         self,
-        payload,
-        claim_name: ClaimNames,
+        payload: dict,
+        claim_name: _Claims,
         expected_value: Sequence[Any] | None = None,
     ) -> None:
         _claim_name = str(claim_name)
@@ -190,7 +194,7 @@ class Authenticator:
 
         payload_claim = (
             payload[_claim_name].split(" ")
-            if claim_name == ClaimNames.SCOPE
+            if claim_name == _Claims.SCOPE
             else payload[_claim_name]
         )
 
