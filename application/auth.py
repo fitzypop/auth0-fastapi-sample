@@ -24,7 +24,7 @@ class ForbiddenException(HTTPException):
 
 
 class UnauthorizedException(HTTPException):
-    def __init__(self, detail: str, **kwargs) -> None:
+    def __init__(self, detail: str = "Missing bear token", **kwargs) -> None:
         """Returns HTTP 401"""
         super().__init__(status.HTTP_401_UNAUTHORIZED, detail, **kwargs)
 
@@ -60,6 +60,17 @@ class Auth0User(BaseModel):
     email: Optional[EmailStr] = Field(None, alias=f"{auth0_rule_namespace}/email")
 
 
+class Auth0HTTPBearer(HTTPBearer):
+    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
+        authorization = request.headers.get("Authorization")
+        if not authorization:
+            if self.auto_error:
+                raise UnauthorizedException
+            else:
+                return None
+        return await super().__call__(request)
+
+
 class Algorithms(StrEnum):
     RS256 = auto()
     HS256 = auto()
@@ -70,14 +81,13 @@ class ClaimNames(StrEnum):
     EMAIL = "email"
 
 
-class Auth0Token:
+class Authenticator:
     """Does all the token verification using PyJWT"""
 
     def __init__(
         self,
-        api_audience: str,
         domain: str,
-        issuer: str,
+        api_audience: str,
         scopes: dict[str, str],
         *,
         algorithm: Algorithms = Algorithms.RS256,
@@ -85,7 +95,7 @@ class Auth0Token:
         self._algorithms = [str(algorithm)]
         self._api_audience = api_audience
         self._domain = domain
-        self._issuer = issuer
+        self._issuer = f"https://{domain}/"
 
         # This gets the JWKS from a given URL and does processing so you can
         # use any of the keys available
@@ -115,10 +125,10 @@ class Auth0Token:
     async def verify(
         self,
         security_scopes: SecurityScopes,
-        token: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer()),
+        token: Optional[HTTPAuthorizationCredentials] = Depends(Auth0HTTPBearer()),
     ) -> Auth0User:
         if token is None:
-            raise UnauthorizedException("Missing bearer token")
+            raise UnauthorizedException
 
         try:
             # This gets the 'kid' from the passed token
@@ -140,7 +150,8 @@ class Auth0Token:
         if len(security_scopes.scopes) > 0:
             self._check_claims(payload, ClaimNames.SCOPE, security_scopes.scopes)
 
-        self._check_claims(payload, ClaimNames.EMAIL)
+        # ? not sure if this is needed? or might be occastional needed ?
+        # self._check_claims(payload, ClaimNames.EMAIL)
 
         try:
             return Auth0User(**payload)
@@ -156,7 +167,7 @@ class Auth0Token:
         _claim_name = str(claim_name)
 
         if _claim_name not in payload:
-            raise ForbiddenException(detail=f'No claim "{claim_name}" found in token')
+            raise ForbiddenException(detail=f'No claim "{_claim_name}" found in token')
 
         if not expected_value:
             return
@@ -169,4 +180,4 @@ class Auth0Token:
 
         for value in expected_value:
             if value not in payload_claim:
-                raise ForbiddenException(detail=f'Missing "{claim_name}" scope')
+                raise ForbiddenException(detail=f'Missing "{value}" scope')

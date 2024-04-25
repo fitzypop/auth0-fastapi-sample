@@ -2,17 +2,21 @@
 
 from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Security
-from application.auth import Auth0Token
+from application.auth import Authenticator
 from application.config import get_settings
 
-
 settings = get_settings()
-auth = Auth0Token(
-    settings.auth0_api_audience,
+auth = Authenticator(
     settings.auth0_domain,
-    settings.auth0_issuer,
+    settings.auth0_api_audience,
     {"read:message": "read messages"},
 )
+Token = Annotated[Any, Security(auth.verify)]
+
+
+def Scopes(*scopes: str):
+    return Security(auth.verify, scopes=scopes)
+
 
 app = FastAPI()
 
@@ -31,16 +35,16 @@ async def public():
     return result
 
 
+# use `Depends(auth.implicit_scheme)` to tell OpenAPI Docs to use OAuth2 Implicit Flow to get tokens
+# use `Security(auth.verify)` to "lockdown" an endpoint
 @app.get("/api/private", dependencies=[Depends(auth.implicit_scheme)])
-async def private(auth_result: Annotated[Any, Security(auth.verify)]):
+async def private(auth_result: Token):
     """A valid access token is required to access this route"""
     return auth_result
 
 
 @app.get("/api/private-scoped", dependencies=[Depends(auth.implicit_scheme)])
-async def private_scoped(
-    auth_result: Annotated[Any, Security(auth.verify, scopes=["read:message"])],
-):
+async def private_scoped(auth_result: Annotated[Any, Scopes("read:message")]):
     """A valid access token and an appropriate scope are required to access
     this route
     """
