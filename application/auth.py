@@ -17,18 +17,18 @@ from fastapi.security import (
 from pydantic import ValidationError
 
 
-class ForbiddenException(HTTPException):
-    """Returns HTTP 403"""
-
-    def __init__(self, detail: str, **kwargs) -> None:
-        super().__init__(status.HTTP_403_FORBIDDEN, detail, **kwargs)
-
-
 class UnauthorizedException(HTTPException):
     """Returns HTTP 401"""
 
     def __init__(self, detail: str = "Missing bearer token", **kwargs) -> None:
         super().__init__(status.HTTP_401_UNAUTHORIZED, detail, **kwargs)
+
+
+class ForbiddenException(HTTPException):
+    """Returns HTTP 403"""
+
+    def __init__(self, detail: str, **kwargs) -> None:
+        super().__init__(status.HTTP_403_FORBIDDEN, detail, **kwargs)
 
 
 class OAuth2ImplicitBearer(OAuth2):
@@ -68,29 +68,6 @@ class OAuth2ImplicitBearer(OAuth2):
         # The actual authentication is done in `Authenticator.verify`.
         # This is for OpenAPI Docs Authorize modal.
         return None
-
-
-class Token:
-    """Token data returned from verify."""
-
-    def __init__(
-        self,
-        *,
-        email: str | None = None,
-        permission: list[str] | None = None,
-        sub: str,
-        **kwargs,
-    ) -> None:
-        self.id = self.sub = sub
-        self.permission = permission
-        self.email = email
-        self.claims = {
-            "email": "email",
-            "id": sub,
-            "permission": permission,
-            "sub": sub,
-            **kwargs,
-        }
 
 
 class AuthHTTPBearer(HTTPBearer):
@@ -135,10 +112,33 @@ class Algorithms(StrEnum):
 class _Claims(StrEnum):
     """Collection of important claims."""
 
-    # EMAIL = "email"
-    # PERMISSION = "permission"
+    EMAIL = "email"
+    PERMISSION = "permission"
     SCOPE = "scope"
     SUBJECT = "sub"
+
+
+class Token:
+    """Token data returned from verify."""
+
+    def __init__(
+        self,
+        *,
+        email: str | None = None,
+        permission: list[str] | None = None,
+        sub: str,
+        **kwargs,
+    ) -> None:
+        self.id = self.sub = sub
+        self.permission = permission
+        self.email = email
+        self.claims = {
+            "email": "email",
+            "id": sub,
+            "permission": permission,
+            "sub": sub,
+            **kwargs,
+        }
 
 
 class Auth0TokenVerifier:
