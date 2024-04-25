@@ -122,17 +122,17 @@ class Authenticator:
         # Various OAuth2 Schemas for OpenAPI interface
         params = urllib.parse.urlencode({"audience": self._api_audience})
         auth_url = f"https://{self._domain}/authorize?{params}"
+        self.authcode_scheme = OAuth2AuthorizationCodeBearer(
+            authorizationUrl=auth_url,
+            tokenUrl=f"https://{self._domain}/oauth/token",
+            scopes=scopes,
+        )
         self.implicit_scheme = OAuth2ImplicitBearer(
             authorizationUrl=auth_url,
             scopes=scopes,
         )
         self.password_scheme = OAuth2PasswordBearer(
             tokenUrl=f"https://{self._domain}/oauth/token", scopes=scopes
-        )
-        self.authcode_scheme = OAuth2AuthorizationCodeBearer(
-            authorizationUrl=auth_url,
-            tokenUrl=f"https://{self._domain}/oauth/token",
-            scopes=scopes,
         )
         self.oidc_scheme = OpenIdConnect(
             openIdConnectUrl=f"https://{self._domain}/.well-known/openid-configuration"
