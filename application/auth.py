@@ -14,7 +14,7 @@ from fastapi.security import (
     OpenIdConnect,
     SecurityScopes,
 )
-from pydantic import BaseModel, EmailStr, Field, ValidationError
+from pydantic import ValidationError
 
 
 class ForbiddenException(HTTPException):
@@ -52,10 +52,19 @@ class OAuth2ImplicitBearer(OAuth2):
         return None
 
 
-class Token(BaseModel):
-    id: str = Field(..., alias="sub")
-    permission: list[str] | None = None
-    email: EmailStr | None = None
+class Token:
+    def __init__(
+        self,
+        *,
+        email: str | None = None,
+        permission: list[str] | None = None,
+        sub: str,
+        **kwargs,
+    ) -> None:
+        self.id = self.sub = sub
+        self.permission = permission
+        self.email = email
+        self._other_claims = kwargs
 
 
 class AuthHTTPBearer(HTTPBearer):
@@ -112,16 +121,15 @@ class Authenticator:
         self._domain = domain
         self._issuer = f"https://{domain}/"
 
-        # This gets the JWKS from a given URL and does processing so you can
-        # use any of the keys available
+        # ! gets JWKS (Json Web Key Set), will use in `verify` function !
+        # ! using PyJWT means no requests in `__init__()` ! YAAAYYY NO MORE MOCKING 🎉
         jwks_url = f"https://{self._domain}/.well-known/jwks.json"
-        # ! None network requests in __init__ ! YAAAYYY 🎉
         self._jwks_client = jwt.PyJWKClient(jwks_url)
 
         if not scopes:
             scopes = {}
 
-        # Various OAuth2 Schemas for OpenAPI interface
+        # Various OAuth2 Flows for OpenAPI interface
         params = urllib.parse.urlencode({"audience": self._api_audience})
         auth_url = f"https://{self._domain}/authorize?{params}"
         self.authcode_scheme = OAuth2AuthorizationCodeBearer(
@@ -176,7 +184,9 @@ class Authenticator:
         try:
             return Token(**payload)
         except (ValidationError, ValueError) as e:
-            raise UnauthorizedException(detail="Error parsing Auth0User") from e
+            raise UnauthorizedException(
+                detail=f"Error parsing Auth0User: {str(e)}"
+            ) from e
 
     def _check_claims(
         self,
