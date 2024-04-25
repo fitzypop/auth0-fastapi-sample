@@ -46,19 +46,34 @@ class OAuth2ImplicitBearer(OAuth2):
         super().__init__(flows=flows, scheme_name=scheme_name, auto_error=auto_error)
 
     async def __call__(self, request: Request) -> str | None:
-        # Overwrite parent call to prevent useless overhead.
-        # The actual auth is done in `Authenticator.verify`.
-        # This scheme is just for Swagger UI
+        # Overload call method to prevent computational overhead.
+        # The actual authentication is done in `Authenticator.verify`.
+        # This is for OpenAPI Docs Authorize modal.
         return None
 
 
-class Auth0User(BaseModel):
+class Token(BaseModel):
     id: str = Field(..., alias="sub")
     permission: list[str] | None = None
     email: EmailStr | None = None
 
 
-class Auth0HTTPBearer(HTTPBearer):
+class AuthHTTPBearer(HTTPBearer):
+    def __init__(
+        self,
+        *,
+        bearerFormat: str | None = None,  # noqa: N803
+        scheme_name: str | None = "HTTPBearer",
+        description: str | None = None,
+        auto_error: bool = True,
+    ) -> None:
+        super().__init__(
+            bearerFormat=bearerFormat,
+            scheme_name=scheme_name,
+            description=description,
+            auto_error=auto_error,
+        )
+
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         authorization = request.headers.get("Authorization")
         if not authorization:
@@ -90,9 +105,6 @@ class Authenticator:
         domain: str,
         scopes: dict[str, str] | None = None,
     ) -> None:
-        if not scopes:
-            scopes = {}
-
         self._algorithms = [str(algorithm)]
         self._api_audience = api_audience
         self._domain = domain
@@ -104,19 +116,21 @@ class Authenticator:
         # None network requests in __init__ !!!
         self._jwks_client = jwt.PyJWKClient(jwks_url)
 
+        if not scopes:
+            scopes = {}
+
         # Various OAuth2 Schemas for OpenAPI interface
         params = urllib.parse.urlencode({"audience": self._api_audience})
-        authorization_url = f"https://{self._domain}/authorize?{params}"
+        auth_url = f"https://{self._domain}/authorize?{params}"
         self.implicit_scheme = OAuth2ImplicitBearer(
-            authorizationUrl=authorization_url,
+            authorizationUrl=auth_url,
             scopes=scopes,
-            scheme_name="Auth0ImplicitBearer",
         )
         self.password_scheme = OAuth2PasswordBearer(
             tokenUrl=f"https://{self._domain}/oauth/token", scopes=scopes
         )
         self.authcode_scheme = OAuth2AuthorizationCodeBearer(
-            authorizationUrl=authorization_url,
+            authorizationUrl=auth_url,
             tokenUrl=f"https://{self._domain}/oauth/token",
             scopes=scopes,
         )
@@ -127,8 +141,8 @@ class Authenticator:
     async def verify(
         self,
         security_scopes: SecurityScopes,
-        token: HTTPAuthorizationCredentials | None = Depends(Auth0HTTPBearer()),  # noqa: B008
-    ) -> Auth0User:
+        token: HTTPAuthorizationCredentials | None = Depends(AuthHTTPBearer()),  # noqa: B008
+    ) -> Token:
         if token is None:
             raise UnauthorizedException
 
@@ -156,7 +170,7 @@ class Authenticator:
         # self._check_claims(payload, ClaimNames.EMAIL)
 
         try:
-            return Auth0User(**payload)
+            return Token(**payload)
         except ValidationError as e:
             raise UnauthorizedException(detail="Error parsing Auth0User") from e
 
