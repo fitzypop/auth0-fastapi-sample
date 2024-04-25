@@ -98,6 +98,7 @@ class Authenticator:
         # This gets the JWKS from a given URL and does processing so you can
         # use any of the keys available
         jwks_url = f"https://{self._domain}/.well-known/jwks.json"
+        # None network requests in __init__ !!!
         self._jwks_client = jwt.PyJWKClient(jwks_url)
 
         # Various OAuth2 Schemas for OpenAPI interface

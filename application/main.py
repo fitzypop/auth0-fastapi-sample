@@ -4,7 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Security
 
-from application.auth import Auth0User, Authenticator
+from application.auth import Authenticator
 from application.config import get_settings
 
 settings = get_settings()
@@ -16,7 +16,7 @@ auth = Authenticator(
 Token = Annotated[Any, Security(auth.verify)]
 
 
-def Scopes(*scopes: str) -> Auth0User:  # noqa:N802
+def Scopes(*scopes: str) -> Any:  # noqa:N802
     return Security(auth.verify, scopes=scopes)
 
 
