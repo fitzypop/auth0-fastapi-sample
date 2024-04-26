@@ -9,9 +9,6 @@ from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
     OAuth2,
-    OAuth2AuthorizationCodeBearer,
-    OAuth2PasswordBearer,
-    OpenIdConnect,
     SecurityScopes,
 )
 from pydantic import ValidationError
@@ -98,14 +95,16 @@ class Token:
         **kwargs,
     ) -> None:
         self.id = self.sub = sub
-        self.permissions = permissions
         self.email = email
-        self.claims = {
-            "email": "email",
-            "permissions": permissions,
-            "sub": sub,
-            **kwargs,
-        }
+        self.permissions = permissions
+
+        self.claims: dict[str, Any] = {"sub": sub}
+        if email:
+            self.claims["email"] = email
+        if permissions:
+            self.claims["permissions"] = permissions
+        if kwargs:
+            self.claims.update(kwargs)
 
 
 class Auth0TokenVerifier:
@@ -154,27 +153,27 @@ class Auth0TokenVerifier:
         jwks_url = f"https://{self._domain}/.well-known/jwks.json"
         self._jwks_client = jwt.PyJWKClient(jwks_url)
 
-        if not scopes:
-            scopes = {}
-
         # Various OAuth2 Flows for OpenAPI interface
         params = urllib.parse.urlencode({"audience": self._api_audience})
         auth_url = f"https://{self._domain}/authorize?{params}"
-        self.authcode_scheme = OAuth2AuthorizationCodeBearer(
-            authorizationUrl=auth_url,
-            tokenUrl=f"https://{self._domain}/oauth/token",
-            scopes=scopes,
-        )
+
         self.implicit_scheme = OAuth2ImplicitBearer(
             authorizationUrl=auth_url,
             scopes=scopes,
         )
-        self.password_scheme = OAuth2PasswordBearer(
-            tokenUrl=f"https://{self._domain}/oauth/token", scopes=scopes
-        )
-        self.oidc_scheme = OpenIdConnect(
-            openIdConnectUrl=f"https://{self._domain}/.well-known/openid-configuration"
-        )
+
+        # TODO: uncomment and test later
+        # self.authcode_scheme = OAuth2AuthorizationCodeBearer(
+        #     authorizationUrl=auth_url,
+        #     tokenUrl=f"https://{self._domain}/oauth/token",
+        #     scopes=scopes,
+        # )
+        # self.password_scheme = OAuth2PasswordBearer(
+        #     tokenUrl=f"https://{self._domain}/oauth/token", scopes=scopes
+        # )
+        # self.oidc_scheme = OpenIdConnect(
+        #     openIdConnectUrl=f"https://{self._domain}/.well-known/openid-configuration"
+        # )
 
     async def verify(
         self,
