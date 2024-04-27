@@ -216,7 +216,7 @@ class Auth0TokenVerifier:
             return Token(**payload)
         except (TypeError, ValueError) as e:
             raise UnauthorizedException(
-                detail=f"Error parsing Auth0User: {str(e)}"
+                detail=f"Error parsing token data: {str(e)}"
             ) from e
 
     def _check_claims(
@@ -228,7 +228,7 @@ class Auth0TokenVerifier:
         _claim_name = str(claim_name)
 
         if _claim_name not in payload:
-            raise ForbiddenException(detail=f'No claim "{_claim_name}" found in token')
+            raise ForbiddenException(detail=f"No claim '{_claim_name}' found in token")
 
         if not expected_value:
             return
@@ -241,4 +241,4 @@ class Auth0TokenVerifier:
 
         for value in expected_value:
             if value not in payload_claim:
-                raise ForbiddenException(detail=f'Missing "{value}" scope')
+                raise ForbiddenException(detail=f"Missing '{value}' scope")
