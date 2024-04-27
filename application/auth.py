@@ -99,9 +99,9 @@ class Token:
         self.permissions = permissions
 
         self.claims: dict[str, Any] = {"sub": sub}
-        if email:
+        if email is not None:
             self.claims["email"] = email
-        if permissions:
+        if permissions is not None:
             self.claims["permissions"] = permissions
         if kwargs:
             self.claims.update(kwargs)
@@ -148,8 +148,8 @@ class Auth0TokenVerifier:
         self._domain = domain
         self._issuer = f"https://{domain}/"
 
-        # ! setup JWKS client (Json Web Key Set), will use in `verify` function !
-        # ! using PyJWT means no requests in `__init__()` ! YAAAYYY NO MORE MOCKING 🎉
+        # setup JWKS client (Json Web Key Set). Used in `verify` function
+        # using PyJWT means no requests in `__init__()` ! YAAAYYY NO MORE MOCKING 🎉 🦄
         jwks_url = f"https://{self._domain}/.well-known/jwks.json"
         self._jwks_client = jwt.PyJWKClient(jwks_url)
 
@@ -182,12 +182,14 @@ class Auth0TokenVerifier:
             HTTPBearer(auto_error=False)  # noqa: B008
         ),
     ) -> Token:
+        # FastAPI HTTPBearer with auto_error=True will raise Forbidden status code
+        # Instead of Unauthorized status code, we want auto_error=False and
+        # Handle status codes our self
         if token is None:
             raise UnauthorizedException
 
         try:
-            # This gets the 'kid' from the passed token.
-            # Netowrk request happens here.
+            # Netowrk request happens here. Gets the 'kid' from the passed token.
             signing = self._jwks_client.get_signing_key_from_jwt(token.credentials)
         except (jwt.exceptions.PyJWKClientError, jwt.exceptions.DecodeError) as e:
             raise ForbiddenException(str(e)) from e
