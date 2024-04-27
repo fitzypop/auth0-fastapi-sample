@@ -11,7 +11,6 @@ from fastapi.security import (
     OAuth2,
     SecurityScopes,
 )
-from pydantic import ValidationError
 
 
 class UnauthorizedException(HTTPException):
@@ -215,7 +214,7 @@ class Auth0TokenVerifier:
 
         try:
             return Token(**payload)
-        except (ValidationError, ValueError) as e:
+        except (TypeError, ValueError) as e:
             raise UnauthorizedException(
                 detail=f"Error parsing Auth0User: {str(e)}"
             ) from e
