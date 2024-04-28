@@ -1,7 +1,7 @@
 import sqlite3
 from enum import StrEnum
 
-import jwt
+from authlib.jose import jwt
 from fastapi import FastAPI
 from pydantic import BaseModel, SecretStr
 
@@ -31,10 +31,23 @@ def get_api_data():
     }
 
 
+class Algorithms(StrEnum):
+    RS256 = "RS256"
+    HS256 = "HS256"
+
+
 @app.get("/oauth/token")
 def get_token(token_in: TokenIn):
+    # alg: focus on RS256, since that's what we currently user.
+    alg = Algorithms.HS256
+    alg_str = str(alg)
+    headers = {
+        "alg": alg_str,
+        "typ": "JWT",
+        "kid": "Some random string",
+    }
     permissions = ["user:read", "user:read:me"]
-    claims = {
+    payload = {
         "exp": "(Expiration Time) unix datetime",
         "nbf": "(Not Before Time) unix datetime",
         "iss": "(Issuer) Auth0_Domain",
@@ -44,13 +57,7 @@ def get_token(token_in: TokenIn):
         "scope": " ".join(permissions),
         "permissions": permissions,
     }
-    # alg: focus on RS256, since that's what we currently user.
-    new_key = jwt.encode(
-        claims,
-        "secret",
-        algorithm="HS256",
-        headers={"kid": "some-random-str"},
-    )
+    new_key = jwt.encode(headers, payload, "secret")
     return {"token": new_key}
 
 

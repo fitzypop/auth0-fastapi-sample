@@ -9,10 +9,10 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = { extras = ["all"], version = "^0.110.2" }
-PyJWT = "^2.8.0"
 pydantic = "^2.7.1"
 pydantic-settings = "^2.2.1"
 uvicorn = "^0.29.0"
+authlib = "^1.3.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4.2"
