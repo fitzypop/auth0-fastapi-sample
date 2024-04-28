@@ -10,3 +10,4 @@
 **/__pycache__
 **/LICENSE
 **/tests
+**/fake_auth0
