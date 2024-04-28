@@ -8,8 +8,8 @@ import pytest
 from fastapi import HTTPException, Security, status
 from fastapi.testclient import TestClient
 
-from application.auth import Token
-from application.main import app, verifier
+from auth0_fastapi_sample.auth import Token
+from auth0_fastapi_sample.main import app, verifier
 
 
 @app.get("/test/token")

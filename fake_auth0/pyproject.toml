@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "fake_auth0"
+version = "0.1.0"
+description = "A Fake Auth0 API. Servers JWT and JWKS."
+authors = ["fitzypop <32967490+fitzypop@users.noreply.github.com>"]
+license = "Unlicense"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = { extras = ["all"], version = "^0.110.2" }
+PyJWT = "^2.8.0"
+pydantic = "^2.7.1"
+pydantic-settings = "^2.2.1"
+uvicorn = "^0.29.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.2"
+pytest = "^8.2.0"
+pytest-asyncio = "^0.23.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

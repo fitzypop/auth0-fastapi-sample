@@ -1,0 +1,12 @@
+**/*.db
+**/*.sqlite3*
+**/justfile
+**/.venv
+**/.git*
+**/.env*
+**/*.md
+**/.python-version
+**/.pytest_cache
+**/__pycache__
+**/LICENSE
+**/tests

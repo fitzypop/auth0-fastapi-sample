@@ -1,0 +1,2 @@
+default:
+    poetry run uvicorn fake_auth0.main:app --reload

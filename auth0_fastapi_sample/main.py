@@ -4,8 +4,8 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Security
 
-from application.auth import Auth0TokenVerifier
-from application.config import get_settings
+from .auth import Auth0TokenVerifier
+from .config import get_settings
 
 settings = get_settings()
 verifier = Auth0TokenVerifier(

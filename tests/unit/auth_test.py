@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.security import HTTPAuthorizationCredentials, SecurityScopes
 
-from application.auth import Algorithms, Auth0TokenVerifier, ForbiddenException
+from auth0_fastapi_sample.auth import Algorithms, Auth0TokenVerifier, ForbiddenException
 
 
 @pytest.fixture

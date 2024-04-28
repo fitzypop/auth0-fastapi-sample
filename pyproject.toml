@@ -1,11 +1,10 @@
 [tool.poetry]
-name = "auth0-python-fastapi-sample"
+name = "auth0_fastapi_sample"
 version = "0.1.0"
 description = "Auth0 Python FastAPI Sample"
 authors = ["fitzypop <32967490+fitzypop@users.noreply.github.com>"]
 license = "Unlicense"
 readme = "README.md"
-packages = [{ include = "application" }]
 repository = "https://github.com/fitzypop/auth0-python-fastapi-sample"
 
 [tool.poetry.dependencies]
